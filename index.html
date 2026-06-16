@@ -138,32 +138,44 @@
             showQuestion();
         }
 
-        function showQuestion() {
-            const current = questions[currentIdx];
-            
-            // Update Progress Tracking
-            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
-            document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
-            document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
+        // Fisher-Yates Shuffle Algorithm to randomize choices
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
-            // Populate Text
-            document.getElementById('question-text').innerText = current.q;
+function showQuestion() {
+    const current = questions[currentIdx];
+    
+    // Update Progress Tracking
+    document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
+    document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
+    document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
 
-            // Generate Options Container
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
+    // Populate Text
+    document.getElementById('question-text').innerText = current.q;
 
-            const options = [current.a, current.b, current.c, current.d];
-            options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 font-medium text-slate-700 transition-all duration-150 cursor-pointer text-sm focus:outline-none";
-                btn.innerText = opt;
-                btn.onclick = () => handleAnswer(opt, current.correct);
-                container.appendChild(btn);
-            });
-        }
+    // Generate Options Container
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
 
-       function handleAnswer(selected, correct) {
+    // Put options into an array and SHUFFLE them
+    let options = [current.a, current.b, current.c, current.d];
+    options = shuffleArray(options);
+
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 font-medium text-slate-700 transition-all duration-150 cursor-pointer text-sm focus:outline-none";
+        btn.innerText = opt;
+        btn.onclick = () => handleAnswer(opt, current.correct);
+        container.appendChild(btn);
+    });
+}
+
+function handleAnswer(selected, correct) {
     // Force both variables to strings using String() to prevent numeric trim crashes
     const selectedStr = String(selected).trim().toLowerCase();
     const correctStr = String(correct).trim().toLowerCase();
