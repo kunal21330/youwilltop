@@ -246,9 +246,9 @@ async function startTest() {
         for (let i = 1; i < data.length; i++) {
 
           const row = data[i];
-          console.log(row)
+          console.log(i, row);
 
-          if (!row[0]) continue;
+          if (!row[0] || row[0].trim() === "") continue;
 
           questions.push({
 
