@@ -47,7 +47,7 @@
 
             <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-6 leading-snug">Loading question...</h2>
             <div id="options-container" class="space-y-3.5">
-                </div>
+            </div>
         </div>
 
         <div id="result-screen" class="hidden">
@@ -64,7 +64,7 @@
             <div class="py-6">
                 <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider">Review Answers</h3>
                 <div id="breakdown-list" class="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                    </div>
+                </div>
             </div>
 
             <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
@@ -79,7 +79,7 @@
 
     <script>
         // ==========================================
-        // CONFIGURATION: PASTE YOUR API URL HERE
+        // CONFIGURATION: DEPLOYED API ENDPOINT LINK
         // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbx_Ea5aaw9H-UYBi0cDQkE72ofq3QDNEIAbsQnRGuJdpxJ-EN4R4WDLaWwZUzY_sHaTKg/exec";
 
@@ -109,7 +109,6 @@
             startScreen.classList.add('hidden');
             loadingScreen.classList.remove('hidden');
 
-            // Fallback mock data in case API isn't linked yet so the template is instantly testable
             if(API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
                 questions = [
                     { q: "What is the capital of France?", a: "Paris", b: "London", c: "Berlin", d: "Rome", correct: "Paris" },
@@ -138,70 +137,78 @@
             showQuestion();
         }
 
-        // Fisher-Yates Shuffle Algorithm to randomize choices
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-}
+        // Crypto-secure utility to shuffle arrays completely cleanly
+        function shuffleOptions(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[array[currentIndex]]];
+            }
+            return array;
+        }
 
-function showQuestion() {
-    const current = questions[currentIdx];
-    
-    // Update Progress Tracking
-    document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
-    document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
-    document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
+        function showQuestion() {
+            const current = questions[currentIdx];
+            
+            // Update Progress Tracking
+            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
+            document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
+            document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
 
-    // Populate Text
-    document.getElementById('question-text').innerText = current.q;
+            // Populate Text
+            document.getElementById('question-text').innerText = current.q;
 
-    // Generate Options Container
-    const container = document.getElementById('options-container');
-    container.innerHTML = '';
+            // Generate Options Container
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
 
-    // Put options into an array and SHUFFLE them
-    let options = [current.a, current.b, current.c, current.d];
-    options = shuffleArray(options);
+            // Clean string values explicitly to decouple from static field indices
+            let values = [
+                String(current.a).trim(), 
+                String(current.b).trim(), 
+                String(current.c).trim(), 
+                String(current.d).trim()
+            ];
+            
+            // Execute the option shuffle array mix
+            values = shuffleOptions(values);
 
-    options.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 font-medium text-slate-700 transition-all duration-150 cursor-pointer text-sm focus:outline-none";
-        btn.innerText = opt;
-        btn.onclick = () => handleAnswer(opt, current.correct);
-        container.appendChild(btn);
-    });
-}
+            values.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 font-medium text-slate-700 transition-all duration-150 cursor-pointer text-sm focus:outline-none";
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt, current.correct);
+                container.appendChild(btn);
+            });
+        }
 
-function handleAnswer(selected, correct) {
-    // Force both variables to strings using String() to prevent numeric trim crashes
-    const selectedStr = String(selected).trim().toLowerCase();
-    const correctStr = String(correct).trim().toLowerCase();
-    
-    const isCorrect = (selectedStr === correctStr);
-    
-    if (isCorrect) {
-        userScore += 1.00;
-    } else {
-        userScore -= 0.25;
-    }
+        function handleAnswer(selected, correct) {
+            const selectedStr = String(selected).trim().toLowerCase();
+            const correctStr = String(correct).trim().toLowerCase();
+            
+            const isCorrect = (selectedStr === correctStr);
+            
+            if (isCorrect) {
+                userScore += 1.00;
+            } else {
+                userScore -= 0.25;
+            }
 
-    sessionAnswers.push({
-        question: questions[currentIdx].q,
-        selected: selected,
-        correct: correct,
-        isCorrect: isCorrect
-    });
+            sessionAnswers.push({
+                question: questions[currentIdx].q,
+                selected: selected,
+                correct: correct,
+                isCorrect: isCorrect
+            });
 
-    currentIdx++;
-    if (currentIdx < questions.length) {
-        showQuestion();
-    } else {
-        showResults();
-    }
-}
+            currentIdx++;
+            if (currentIdx < questions.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
 
         function showResults() {
             quizScreen.classList.add('hidden');
@@ -227,37 +234,36 @@ function handleAnswer(selected, correct) {
         }
 
         async function sendEmailResults() {
-    const emailInput = document.getElementById('user-email').value;
-    if (!emailInput || !emailInput.includes('@')) {
-        alert("Please enter a valid email address.");
-        return;
-    }
+            const emailInput = document.getElementById('user-email').value;
+            if (!emailInput || !emailInput.includes('@')) {
+                alert("Please enter a valid email address.");
+                return;
+            }
 
-    const emailBtn = document.getElementById('email-btn');
-    emailBtn.innerText = "Sending...";
-    emailBtn.disabled = true;
+            const emailBtn = document.getElementById('email-btn');
+            emailBtn.innerText = "Sending...";
+            emailBtn.disabled = true;
 
-    const payload = {
-        email: emailInput,
-        score: userScore.toFixed(2),
-        results: sessionAnswers
-    };
+            const payload = {
+                email: emailInput,
+                score: userScore.toFixed(2),
+                results: sessionAnswers
+            };
 
-    try {
-        await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-        alert("Results shared successfully to your inbox!");
-        emailBtn.innerText = "Sent!";
-    } catch (error) {
-        alert("Could not process automatic mailing. Trying standard browser backup...");
-        // Fallback option in case of network timeout
-        window.open(`mailto:${emailInput}?subject=Test%20Results&body=Score:%20${userScore.toFixed(2)}`, '_blank');
-        emailBtn.innerText = "Share via Email";
-        emailBtn.disabled = false;
-    }
-}
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                alert("Results shared successfully to your inbox!");
+                emailBtn.innerText = "Sent!";
+            } catch (error) {
+                alert("Could not process automatic mailing. Trying standard browser backup...");
+                window.open(`mailto:${emailInput}?subject=Test%20Results&body=Score:%20${userScore.toFixed(2)}`, '_blank');
+                emailBtn.innerText = "Share via Email";
+                emailBtn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
