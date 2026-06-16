@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Test Portal</title>
+    <title>Online Test Portal (Frontend Only)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         .option-btn:hover { transform: translateY(-1px); }
         .option-btn:active { transform: translateY(1px); }
@@ -14,7 +15,7 @@
 
     <div id="setup-alert" class="max-w-xl w-full bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-6 shadow-sm text-sm">
         <p class="font-semibold mb-1">⚙️ Setup Reminder:</p>
-        Please ensure you have replaced the placeholder URL in the JavaScript code (`API_URL`) with your deployed API endpoint.
+        Please ensure you have replaced the placeholder URL in the JavaScript code (`CSV_URL`) with your published Google Sheets CSV link.
     </div>
 
     <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-8 max-w-2xl w-full transition-all duration-300">
@@ -33,7 +34,7 @@
 
         <div id="loading-screen" class="hidden text-center py-12">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-            <p class="text-slate-600 font-medium">Fetching assessment questions...</p>
+            <p class="text-slate-600 font-medium">Fetching assessment questions directly from spreadsheet...</p>
         </div>
 
         <div id="quiz-screen" class="hidden">
@@ -78,10 +79,10 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURATION: DEPLOYED API ENDPOINT LINK
-        // ==========================================
-        const API_URL = "https://script.google.com/macros/s/AKfycbzfUskFtw1lS5wzIYHUwnCugZvAlkLmppuWwYdaw5kOhtxVRn9hwYH3dvdpYMbtSB7aUA/exec";
+        // =========================================================================
+        // CONFIGURATION: REPLACE THIS WITH YOUR GENERATED "PUBLISH TO WEB" CSV LINK
+        // =========================================================================
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOga_DjrMlh5t1DgyLWs1nGhZYGhvMd7BX3yEV7KPAdp52bmfRh0h6VrWMGIZakpS3NnEW64xrMlif/pub?output=csv";
 
         // State variables
         let questions = [];
@@ -100,8 +101,8 @@
         document.getElementById('start-btn').addEventListener('click', startTest);
         document.getElementById('email-btn').addEventListener('click', sendEmailResults);
 
-        // Hide alert if URL is configured
-        if (API_URL !== "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+        // Hide alert if URL configured correctly
+        if (CSV_URL !== "YOUR_GOOGLE_SHEETS_PUBLISH_TO_WEB_CSV_LINK_HERE") {
             setupAlert.classList.add('hidden');
         }
 
@@ -109,7 +110,8 @@
             startScreen.classList.add('hidden');
             loadingScreen.classList.remove('hidden');
 
-            if(API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+            // Local fallback template data if no link configuration is present
+            if (CSV_URL === "YOUR_GOOGLE_SHEETS_PUBLISH_TO_WEB_CSV_LINK_HERE") {
                 questions = [
                     { q: "What is the capital of France?", a: "Paris", b: "London", c: "Berlin", d: "Rome", correct: "Paris" },
                     { q: "Which programming language powers web behavior?", a: "Python", b: "HTML", c: "JavaScript", d: "CSS", correct: "JavaScript" },
@@ -120,11 +122,44 @@
             }
 
             try {
-                const response = await fetch(API_URL);
-                questions = await response.json();
-                initQuiz();
+                const response = await fetch(CSV_URL);
+                const csvText = await response.text();
+                
+                // Process the CSV layout down to usable JSON rows natively
+                Papa.parse(csvText, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const data = results.data;
+                        questions = [];
+                        
+                        // Loops row indices starting at 1 to completely drop row 1 (the table header text column)
+                        for (let i = 1; i < data.length; i++) {
+                            let row = data[i];
+                            
+                            // Skips entirely row instances lacking a structural question string block
+                            if (!row[0] || String(row[0]).trim() === "") continue;
+                            
+                            questions.push({
+                                q: String(row[0]).trim(),
+                                a: row[1] !== undefined ? String(row[1]).trim() : "",
+                                b: row[2] !== undefined ? String(row[2]).trim() : "",
+                                c: row[3] !== undefined ? String(row[3]).trim() : "",
+                                d: row[4] !== undefined ? String(row[4]).trim() : "",
+                                correct: row[5] !== undefined ? String(row[5]).trim() : ""
+                            });
+                        }
+                        
+                        if (questions.length === 0) {
+                            alert("No structured question rows could be processed. Verify your document architecture layout.");
+                            location.reload();
+                            return;
+                        }
+                        initQuiz();
+                    }
+                });
             } catch (error) {
-                alert("Failed to load questions from Excel/API source. Check your console logs.");
+                alert("Failed to pull data from your public CSV asset link resource destination.");
                 console.error(error);
                 loadingScreen.classList.add('hidden');
                 startScreen.classList.remove('hidden');
@@ -137,7 +172,6 @@
             showQuestion();
         }
 
-        // Crypto-secure utility to shuffle arrays completely cleanly
         function shuffleOptions(array) {
             let currentIndex = array.length, randomIndex;
             while (currentIndex !== 0) {
@@ -151,27 +185,23 @@
         function showQuestion() {
             const current = questions[currentIdx];
             
-            // Update Progress Tracking
             document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
             document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
             document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
 
-            // Populate Text
-            document.getElementById('question-text').innerText = current.q || "Empty Question Title";
+            document.getElementById('question-text').innerText = current.q;
 
-            // Generate Options Container
             const container = document.getElementById('options-container');
             container.innerHTML = '';
 
-            // Extract values safely, managing fallback variables if any undefined slots survive
             let values = [
-                String(current.a || '').trim(), 
-                String(current.b || '').trim(), 
-                String(current.c || '').trim(), 
-                String(current.d || '').trim()
-            ].filter(val => val !== ""); // Drops empty items cleanly if sheet cells are incomplete
+                String(current.a).trim(), 
+                String(current.b).trim(), 
+                String(current.c).trim(), 
+                String(current.d).trim()
+            ].filter(val => val !== "" && val !== "undefined"); 
 
-            // Execute the option shuffle array mix
+            // Active random array shuffle logic execution block
             values = shuffleOptions(values);
 
             values.forEach(opt => {
@@ -186,7 +216,6 @@
         function handleAnswer(selected, correct) {
             const selectedStr = String(selected).trim().toLowerCase();
             const correctStr = String(correct).trim().toLowerCase();
-            
             const isCorrect = (selectedStr === correctStr);
             
             if (isCorrect) {
@@ -233,40 +262,21 @@
             });
         }
 
-        async function sendEmailResults() {
+        function sendEmailResults() {
             const emailInput = document.getElementById('user-email').value;
             if (!emailInput || !emailInput.includes('@')) {
                 alert("Please enter a valid email address.");
                 return;
             }
 
-            const emailBtn = document.getElementById('email-btn');
-            emailBtn.innerText = "Sending...";
-            emailBtn.disabled = true;
+            // Frontend-only email fallback handling using default local browser client mailto protocol redirect loops
+            let emailBody = `Hello,%0D%0A%0D%0AAssessment Results for: ${emailInput}%0D%0AFinal Score: ${userScore.toFixed(2)}%0D%0A%0D%0ASummary Details:%0D%0A`;
+            
+            sessionAnswers.forEach((item, index) => {
+                emailBody += `${index + 1}. ${encodeURIComponent(item.question)}%0D%0A   Chosen: ${encodeURIComponent(item.selected)} (${item.isCorrect ? 'CORRECT' : 'INCORRECT'})%0D%0A`;
+            });
 
-            const payload = {
-                email: emailInput,
-                score: userScore.toFixed(2),
-                results: sessionAnswers
-            };
-
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    },
-                    body: JSON.stringify(payload)
-                });
-                alert("Results shared successfully to your inbox!");
-                emailBtn.innerText = "Sent!";
-            } catch (error) {
-                alert("Could not process automatic mailing. Trying standard browser backup...");
-                window.open(`mailto:${emailInput}?subject=Test%20Results&body=Score:%20${userScore.toFixed(2)}`, '_blank');
-                emailBtn.innerText = "Share via Email";
-                emailBtn.disabled = false;
-            }
+            window.open(`mailto:${emailInput}?subject=Test%20Performance%20Summary&body=${emailBody}`, '_blank');
         }
     </script>
 </body>
