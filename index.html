@@ -81,7 +81,7 @@
         // ==========================================
         // CONFIGURATION: DEPLOYED API ENDPOINT LINK
         // ==========================================
-        const API_URL = "https://script.google.com/macros/s/AKfycbx_Ea5aaw9H-UYBi0cDQkE72ofq3QDNEIAbsQnRGuJdpxJ-EN4R4WDLaWwZUzY_sHaTKg/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbzfUskFtw1lS5wzIYHUwnCugZvAlkLmppuWwYdaw5kOhtxVRn9hwYH3dvdpYMbtSB7aUA/exec";
 
         // State variables
         let questions = [];
@@ -251,8 +251,13 @@
             };
 
             try {
+                // Inside your HTML script tags, locate sendEmailResults() and update the fetch parameters:
                 await fetch(API_URL, {
                     method: 'POST',
+                    mode: 'no-cors', // Tells the browser to send data without expecting a complex response verification
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
                     body: JSON.stringify(payload)
                 });
                 alert("Results shared successfully to your inbox!");
