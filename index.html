@@ -45,6 +45,19 @@
     </button>
 
   </div>
+  <!-- TEST SELECTION SCREEN -->
+<div id="test-select-screen" class="hidden text-center">
+
+  <h2 class="text-2xl font-bold mb-6 text-slate-800">
+    Choose Test
+  </h2>
+
+  <div
+    id="test-list"
+    class="space-y-3"
+  ></div>
+
+</div>
 
   <!-- LOADING -->
   <div id="loading-screen" class="hidden text-center py-10">
@@ -59,6 +72,10 @@
 
   <!-- QUIZ SCREEN -->
   <div id="quiz-screen" class="hidden">
+          <h3
+        id="test-title"
+        class="text-lg font-bold mb-4 text-blue-600"
+      ></h3>
 
     <div class="flex justify-between mb-4">
 
@@ -124,16 +141,20 @@
 
 <script>
 
-const CSV_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vSOga_DjrMlh5t1DgyLWs1nGhZYGhvMd7BX3yEV7KPAdp52bmfRh0h6VrWMGIZakpS3NnEW64xrMlif/pub?output=csv";
+// const CSV_URL =
+// "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOga_DjrMlh5t1DgyLWs1nGhZYGhvMd7BX3yEV7KPAdp52bmfRh0h6VrWMGIZakpS3NnEW64xrMlif/pub?output=csv";
 
 const SCRIPT_URL =
 "https://script.google.com/macros/s/AKfycbw_Hiksly66sMSt6MCawiSX0vLkPnV4qTnihNk6ZiVLYyBnZq8U0QU_jUXls0wMubIh9Q/exec";
+
+  const SHEET_ID =
+"18kiCNNP98ihdWZmQxVNZe9MXaZFkNChknKa1-kDGVCo";
 
 let questions = [];
 let currentIndex = 0;
 let score = 0;
 let answers = [];
+let selectedSheet = "";
 
 // DOM
 const startScreen = document.getElementById("start-screen");
@@ -143,12 +164,56 @@ const resultScreen = document.getElementById("result-screen");
 
 document
 .getElementById("start-btn")
-.addEventListener("click", startTest);
+.addEventListener("click", loadSheetOptions);
 
 document
 .getElementById("email-btn")
 .addEventListener("click", sendEmailResults);
+async function loadSheetOptions() {
 
+  startScreen.classList.add("hidden");
+
+  const testScreen =
+  document.getElementById("test-select-screen");
+
+  testScreen.classList.remove("hidden");
+
+  const container =
+  document.getElementById("test-list");
+
+  container.innerHTML = "";
+
+  // Add your sheet names here
+  // EXACTLY same as spreadsheet tab names
+
+  const sheets = [
+    "Budget",
+    "Economic Survey",
+  ];
+
+  sheets.forEach(sheet => {
+
+    const btn =
+    document.createElement("button");
+
+    btn.className =
+    "w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold";
+
+    btn.innerText = sheet;
+
+    btn.onclick = () => {
+
+      selectedSheet = sheet;
+
+      startTest();
+    };
+
+    container.appendChild(btn);
+
+  });
+
+}
+  
 async function startTest() {
 
   startScreen.classList.add("hidden");
@@ -156,7 +221,15 @@ async function startTest() {
 
   try {
 
-    const response = await fetch(CSV_URL);
+    document
+    .getElementById("test-select-screen")
+    .classList.add("hidden");
+    
+    const csvUrl =
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(selectedSheet)}`;
+    
+    const response =
+    await fetch(csvUrl);
     const csvText = await response.text();
 
     Papa.parse(csvText, {
@@ -230,6 +303,8 @@ function shuffle(array) {
 function showQuestion() {
 
   const current = questions[currentIndex];
+  document.getElementById("test-title").innerText =
+selectedSheet;
 
   document.getElementById("progress-text").innerText =
   `Question ${currentIndex + 1} of ${questions.length}`;
