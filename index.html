@@ -6,6 +6,7 @@
     <title>Online Test Portal (Frontend Only)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         .option-btn:hover { transform: translateY(-1px); }
         .option-btn:active { transform: translateY(1px); }
@@ -83,7 +84,7 @@
         // CONFIGURATION: REPLACE THIS WITH YOUR GENERATED "PUBLISH TO WEB" CSV LINK
         // =========================================================================
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOga_DjrMlh5t1DgyLWs1nGhZYGhvMd7BX3yEV7KPAdp52bmfRh0h6VrWMGIZakpS3NnEW64xrMlif/pub?output=csv";
-
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_Hiksly66sMSt6MCawiSX0vLkPnV4qTnihNk6ZiVLYyBnZq8U0QU_jUXls0wMubIh9Q/exec";
         // State variables
         let questions = [];
         let currentIdx = 0;
@@ -266,19 +267,144 @@ function shuffleOptions(array) {
             });
         }
 
-        function sendEmailResults() {
-            const emailInput = document.getElementById('user-email').value;
-            if (!emailInput || !emailInput.includes('@')) {
-                alert("Please enter a valid email address.");
-                return;
-            }
+        async function sendEmailResults() {
 
-            // Frontend-only email fallback handling using default local browser client mailto protocol redirect loops
-            let emailBody = `Hello,%0D%0A%0D%0AAssessment Results for: ${emailInput}%0D%0AFinal Score: ${userScore.toFixed(2)}%0D%0A%0D%0ASummary Details:%0D%0A`;
-            
-            sessionAnswers.forEach((item, index) => {
-                emailBody += `${index + 1}. ${encodeURIComponent(item.question)}%0D%0A   Chosen: ${encodeURIComponent(item.selected)} (${item.isCorrect ? 'CORRECT' : 'INCORRECT'})%0D%0A`;
-            });
+```
+const btn = document.getElementById('email-btn');
+
+btn.disabled = true;
+btn.innerText = "Sending Report...";
+
+try {
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Title
+    doc.setFontSize(18);
+    doc.text("Assessment Report", 20, 20);
+
+    // Score
+    doc.setFontSize(12);
+    doc.text(`Final Score: ${userScore.toFixed(2)}`, 20, 32);
+
+    let y = 50;
+
+    sessionAnswers.forEach((item, index) => {
+
+        // New page if needed
+        if (y > 260) {
+            doc.addPage();
+            y = 20;
+        }
+
+        // Question
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(11);
+
+        doc.text(
+            `${index + 1}. ${item.question}`,
+            20,
+            y
+        );
+
+        y += 8;
+
+        // Correct answer
+        doc.text(
+            `Correct Answer: ${item.correct}`,
+            25,
+            y
+        );
+
+        y += 8;
+
+        // User answer
+        doc.text(
+            `Your Answer: ${item.selected}`,
+            25,
+            y
+        );
+
+        y += 8;
+
+        // Status
+        if (item.isCorrect) {
+
+            doc.setTextColor(0, 150, 0);
+
+            doc.text(
+                "CORRECT",
+                25,
+                y
+            );
+
+        } else {
+
+            doc.setTextColor(255, 0, 0);
+
+            doc.text(
+                "INCORRECT",
+                25,
+                y
+            );
+        }
+
+        y += 15;
+    });
+
+    // Convert PDF to Base64
+    const pdfBlob = doc.output('blob');
+
+    const reader = new FileReader();
+
+    reader.readAsDataURL(pdfBlob);
+
+    reader.onloadend = async function () {
+
+        const base64data = reader.result.split(',')[1];
+
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                pdfBase64: base64data,
+                score: userScore.toFixed(2)
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+
+            btn.innerText = "Report Sent Successfully";
+
+            alert("PDF report emailed successfully!");
+
+        } else {
+
+            btn.innerText = "Failed To Send";
+
+            console.error(result);
+
+            alert("Failed to send report.");
+        }
+    };
+
+} catch (err) {
+
+    console.error(err);
+
+    btn.innerText = "Error Sending Report";
+
+    alert("Something went wrong.");
+}
+```
+
+}
+
 
             window.open(`mailto:${emailInput}?subject=Test%20Performance%20Summary&body=${emailBody}`, '_blank');
         }
