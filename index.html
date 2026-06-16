@@ -353,127 +353,302 @@ function showResults() {
   });
 
 }
-
+  
 async function sendEmailResults() {
 
-  const btn =
-  document.getElementById("email-btn");
+    const btn = document.getElementById("email-btn");
 
-  btn.disabled = true;
+    btn.disabled = true;
+    btn.innerText = "Generating PDF...";
 
-  btn.innerText = "Sending...";
+    try {
 
-  try {
+        const { jsPDF } = window.jspdf;
 
-    const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            unit: "mm",
+            format: "a4"
+        });
 
-    const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
 
-    doc.setFontSize(20);
+        const margin = 15;
+        const maxWidth = pageWidth - (margin * 2);
 
-    doc.text("Assessment Report", 20, 20);
+        // =========================
+        // HEADER
+        // =========================
 
-    doc.setFontSize(14);
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, pageWidth, 35, "F");
 
-    doc.text(`Final Score: ${score.toFixed(2)}`, 20, 35);
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont(undefined, "bold");
 
-    let y = 50;
+        doc.text("Assessment Report", margin, 20);
 
-    answers.forEach((item, index) => {
+        doc.setFontSize(12);
 
-      if (y > 260) {
+        doc.text(
+            `Final Score: ${score.toFixed(2)}`,
+            margin,
+            28
+        );
 
-        doc.addPage();
+        let y = 50;
 
-        y = 20;
-      }
+        // =========================
+        // ANSWERS
+        // =========================
 
-      doc.text(
-        `${index + 1}. ${item.question}`,
-        20,
-        y
-      );
+        answers.forEach((item, index) => {
 
-      y += 8;
+            // Add page if needed
+            if (y > 250) {
 
-      doc.text(
-        `Your Answer: ${item.selected}`,
-        25,
-        y
-      );
+                doc.addPage();
 
-      y += 8;
+                y = 20;
+            }
 
-      doc.text(
-        `Correct Answer: ${item.correct}`,
-        25,
-        y
-      );
+            // Card background
+            doc.setFillColor(248, 250, 252);
 
-      y += 15;
+            doc.roundedRect(
+                margin,
+                y - 5,
+                maxWidth,
+                42,
+                3,
+                3,
+                "F"
+            );
 
-    });
+            // Question Number
+            doc.setTextColor(15, 23, 42);
 
-    const pdfBlob = doc.output("blob");
+            doc.setFontSize(13);
 
-    const reader = new FileReader();
+            doc.setFont(undefined, "bold");
 
-    reader.readAsDataURL(pdfBlob);
+            doc.text(
+                `Question ${index + 1}`,
+                margin + 4,
+                y + 2
+            );
 
-    reader.onloadend = async function() {
+            y += 8;
 
-      const base64data =
-      reader.result.split(",")[1];
+            // Question Text
+            doc.setFontSize(11);
 
-      const response = await fetch(SCRIPT_URL, {
+            doc.setFont(undefined, "normal");
 
-        method: "POST",
+            const questionLines =
+            doc.splitTextToSize(
+                item.question,
+                maxWidth - 8
+            );
 
-        headers: {
-          "Content-Type": "text/plain"
-        },
+            doc.text(
+                questionLines,
+                margin + 4,
+                y
+            );
 
-        body: JSON.stringify({
+            y += (questionLines.length * 6);
 
-          pdfBase64: base64data,
+            // Correct Answer
+            doc.setFont(undefined, "bold");
 
-          score: score.toFixed(2)
+            doc.setTextColor(22, 163, 74);
 
-        })
+            const correctLines =
+            doc.splitTextToSize(
+                `Correct Answer: ${item.correct}`,
+                maxWidth - 8
+            );
 
-      });
+            doc.text(
+                correctLines,
+                margin + 4,
+                y
+            );
 
-      const result = await response.json();
+            y += (correctLines.length * 6);
 
-      if (result.success) {
+            // User Answer
+            if (item.isCorrect) {
 
-        btn.innerText = "Report Sent";
+                doc.setTextColor(22, 163, 74);
 
-        alert("Email sent successfully!");
+            } else {
 
-      } else {
+                doc.setTextColor(220, 38, 38);
 
-        console.error(result);
+            }
 
-        btn.innerText = "Failed";
+            const answerLines =
+            doc.splitTextToSize(
+                `Your Answer: ${item.selected}`,
+                maxWidth - 8
+            );
 
-        alert("Failed to send email.");
+            doc.text(
+                answerLines,
+                margin + 4,
+                y
+            );
 
-      }
+            y += (answerLines.length * 6);
 
-    };
+            // Status Badge
+            if (item.isCorrect) {
 
-  } catch (err) {
+                doc.setFillColor(220, 252, 231);
 
-    console.error(err);
+                doc.roundedRect(
+                    margin + 4,
+                    y,
+                    28,
+                    8,
+                    2,
+                    2,
+                    "F"
+                );
 
-    btn.innerText = "Error";
+                doc.setTextColor(22, 163, 74);
 
-    alert("Something went wrong.");
+                doc.setFontSize(10);
 
-  }
+                doc.setFont(undefined, "bold");
 
+                doc.text(
+                    "CORRECT",
+                    margin + 8,
+                    y + 5
+                );
+
+            } else {
+
+                doc.setFillColor(254, 226, 226);
+
+                doc.roundedRect(
+                    margin + 4,
+                    y,
+                    32,
+                    8,
+                    2,
+                    2,
+                    "F"
+                );
+
+                doc.setTextColor(220, 38, 38);
+
+                doc.setFontSize(10);
+
+                doc.setFont(undefined, "bold");
+
+                doc.text(
+                    "INCORRECT",
+                    margin + 7,
+                    y + 5
+                );
+
+            }
+
+            y += 18;
+
+        });
+
+        // =========================
+        // FOOTER
+        // =========================
+
+        const totalPages = doc.internal.getNumberOfPages();
+
+        for (let i = 1; i <= totalPages; i++) {
+
+            doc.setPage(i);
+
+            doc.setFontSize(10);
+
+            doc.setTextColor(100);
+
+            doc.text(
+                `Page ${i} of ${totalPages}`,
+                pageWidth - 35,
+                pageHeight - 10
+            );
+        }
+
+        // =========================
+        // PDF -> BASE64
+        // =========================
+
+        const pdfBlob = doc.output("blob");
+
+        const reader = new FileReader();
+
+        reader.readAsDataURL(pdfBlob);
+
+        reader.onloadend = async function () {
+
+            const base64data =
+            reader.result.split(",")[1];
+
+            const response = await fetch(SCRIPT_URL, {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "text/plain"
+                },
+
+                body: JSON.stringify({
+                    pdfBase64: base64data,
+                    score: score.toFixed(2)
+                })
+
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+
+                btn.innerText =
+                "Report Sent Successfully";
+
+                alert(
+                    "PDF Report Sent Successfully!"
+                );
+
+            } else {
+
+                console.error(result);
+
+                btn.innerText =
+                "Failed To Send";
+
+                alert(
+                    "Failed to send report."
+                );
+            }
+
+        };
+
+    } catch (err) {
+
+        console.error(err);
+
+        btn.innerText = "Error";
+
+        alert("Something went wrong.");
+    }
 }
+
 
 </script>
 
