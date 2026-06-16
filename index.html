@@ -157,20 +157,20 @@
             document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
 
             // Populate Text
-            document.getElementById('question-text').innerText = current.q;
+            document.getElementById('question-text').innerText = current.q || "Empty Question Title";
 
             // Generate Options Container
             const container = document.getElementById('options-container');
             container.innerHTML = '';
 
-            // Clean string values explicitly to decouple from static field indices
+            // Extract values safely, managing fallback variables if any undefined slots survive
             let values = [
-                String(current.a).trim(), 
-                String(current.b).trim(), 
-                String(current.c).trim(), 
-                String(current.d).trim()
-            ];
-            
+                String(current.a || '').trim(), 
+                String(current.b || '').trim(), 
+                String(current.c || '').trim(), 
+                String(current.d || '').trim()
+            ].filter(val => val !== ""); // Drops empty items cleanly if sheet cells are incomplete
+
             // Execute the option shuffle array mix
             values = shuffleOptions(values);
 
@@ -251,10 +251,9 @@
             };
 
             try {
-                // Inside your HTML script tags, locate sendEmailResults() and update the fetch parameters:
                 await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Tells the browser to send data without expecting a complex response verification
+                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'text/plain'
                     },
