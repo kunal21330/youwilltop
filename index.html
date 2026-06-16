@@ -243,12 +243,11 @@ async function startTest() {
 
         questions = [];
 
-        for (let i = 1; i < data.length; i++) {
+        for (let i = 0; i < data.length; i++) {
 
           const row = data[i];
           console.log(i, row);
 
-          if (!row[0] || row[0].trim() === "") continue;
 
           questions.push({
 
