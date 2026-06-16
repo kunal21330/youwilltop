@@ -226,7 +226,7 @@ async function startTest() {
     .classList.add("hidden");
     
     const csvUrl =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(selectedSheet)}`;
+`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(selectedSheet)}`;
     
     const response =
     await fetch(csvUrl);
