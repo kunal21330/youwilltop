@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Test Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .option-btn:hover { transform: translateY(-1px); }
+        .option-btn:active { transform: translateY(1px); }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col justify-center items-center font-sans antialiased p-4">
+
+    <div id="setup-alert" class="max-w-xl w-full bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl mb-6 shadow-sm text-sm">
+        <p class="font-semibold mb-1">⚙️ Setup Reminder:</p>
+        Please ensure you have replaced the placeholder URL in the JavaScript code (`API_URL`) with your deployed API endpoint.
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-8 max-w-2xl w-full transition-all duration-300">
+        
+        <div id="start-screen" class="text-center py-8">
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-3">Welcome to the Assessment</h1>
+            <p class="text-slate-500 mb-8 max-w-md mx-auto text-sm leading-relaxed">
+                This test consists of multiple-choice questions. 
+                <br><span class="font-semibold text-emerald-600">+1.00</span> for correct answers. 
+                <span class="font-semibold text-rose-500">-0.25</span> for incorrect answers.
+            </p>
+            <button id="start-btn" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-98">
+                Start Test
+            </button>
+        </div>
+
+        <div id="loading-screen" class="hidden text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+            <p class="text-slate-600 font-medium">Fetching assessment questions...</p>
+        </div>
+
+        <div id="quiz-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <span id="progress-text" class="text-xs font-bold uppercase tracking-wider text-slate-400">Question 1 of 10</span>
+                <span id="score-preview" class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">Score: 0.00</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">
+                <div id="progress-bar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-6 leading-snug">Loading question...</h2>
+            <div id="options-container" class="space-y-3.5">
+                </div>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <div class="text-center pb-6 border-b border-slate-100">
+                <span class="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-50 text-emerald-500 mb-4 text-2xl">🎉</span>
+                <h2 class="text-2xl font-black text-slate-800">Test Completed!</h2>
+                <p class="text-slate-400 text-sm mt-1">Your performance summary</p>
+                <div class="mt-4 inline-block bg-slate-900 text-white px-6 py-3 rounded-2xl">
+                    <span class="text-xs text-slate-400 block uppercase font-bold tracking-widest">Final Score</span>
+                    <span id="final-score" class="text-3xl font-black tracking-tight">0.00</span>
+                </div>
+            </div>
+
+            <div class="py-6">
+                <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider">Review Answers</h3>
+                <div id="breakdown-list" class="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                    </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                <input type="email" id="user-email" placeholder="Enter your email to share results" class="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm">
+                <button id="email-btn" class="bg-slate-800 hover:bg-slate-900 text-white font-medium px-6 py-3 rounded-xl transition-colors text-sm shadow-sm cursor-pointer whitespace-nowrap">
+                    Share via Email
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION: PASTE YOUR API URL HERE
+        // ==========================================
+        const API_URL = "https://script.google.com/macros/s/AKfycbx_Ea5aaw9H-UYBi0cDQkE72ofq3QDNEIAbsQnRGuJdpxJ-EN4R4WDLaWwZUzY_sHaTKg/exec";
+
+        // State variables
+        let questions = [];
+        let currentIdx = 0;
+        let userScore = 0;
+        let sessionAnswers = [];
+
+        // DOM elements
+        const startScreen = document.getElementById('start-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const setupAlert = document.getElementById('setup-alert');
+
+        // Initial Event Listeners
+        document.getElementById('start-btn').addEventListener('click', startTest);
+        document.getElementById('email-btn').addEventListener('click', sendEmailResults);
+
+        // Hide alert if URL is configured
+        if (API_URL !== "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+            setupAlert.classList.add('hidden');
+        }
+
+        async function startTest() {
+            startScreen.classList.add('hidden');
+            loadingScreen.classList.remove('hidden');
+
+            // Fallback mock data in case API isn't linked yet so the template is instantly testable
+            if(API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+                questions = [
+                    { q: "What is the capital of France?", a: "Paris", b: "London", c: "Berlin", d: "Rome", correct: "Paris" },
+                    { q: "Which programming language powers web behavior?", a: "Python", b: "HTML", c: "JavaScript", d: "CSS", correct: "JavaScript" },
+                    { q: "What is 5 + 3?", a: "5", b: "8", c: "9", d: "2", correct: "8" }
+                ];
+                setTimeout(() => initQuiz(), 800); 
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL);
+                questions = await response.json();
+                initQuiz();
+            } catch (error) {
+                alert("Failed to load questions from Excel/API source. Check your console logs.");
+                console.error(error);
+                loadingScreen.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+            }
+        }
+
+        function initQuiz() {
+            loadingScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const current = questions[currentIdx];
+            
+            // Update Progress Tracking
+            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
+            document.getElementById('progress-bar').style.width = `${((currentIdx) / questions.length) * 100}%`;
+            document.getElementById('score-preview').innerText = `Score: ${userScore.toFixed(2)}`;
+
+            // Populate Text
+            document.getElementById('question-text').innerText = current.q;
+
+            // Generate Options Container
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            const options = [current.a, current.b, current.c, current.d];
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 font-medium text-slate-700 transition-all duration-150 cursor-pointer text-sm focus:outline-none";
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt, current.correct);
+                container.appendChild(btn);
+            });
+        }
+
+       function handleAnswer(selected, correct) {
+    // Force both variables to strings using String() to prevent numeric trim crashes
+    const selectedStr = String(selected).trim().toLowerCase();
+    const correctStr = String(correct).trim().toLowerCase();
+    
+    const isCorrect = (selectedStr === correctStr);
+    
+    if (isCorrect) {
+        userScore += 1.00;
+    } else {
+        userScore -= 0.25;
+    }
+
+    sessionAnswers.push({
+        question: questions[currentIdx].q,
+        selected: selected,
+        correct: correct,
+        isCorrect: isCorrect
+    });
+
+    currentIdx++;
+    if (currentIdx < questions.length) {
+        showQuestion();
+    } else {
+        showResults();
+    }
+}
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            document.getElementById('final-score').innerText = userScore.toFixed(2);
+
+            const listContainer = document.getElementById('breakdown-list');
+            listContainer.innerHTML = '';
+
+            sessionAnswers.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `p-3.5 rounded-xl border text-sm ${item.isCorrect ? 'bg-emerald-50/60 border-emerald-100' : 'bg-rose-50/60 border-rose-100'}`;
+                
+                div.innerHTML = `
+                    <p class="font-semibold text-slate-800 mb-1">${index + 1}. ${item.question}</p>
+                    <p class="text-xs ${item.isCorrect ? 'text-emerald-700' : 'text-rose-700'}">
+                        Your Answer: <strong>${item.selected}</strong> ${item.isCorrect ? '(Correct)' : ''}
+                    </p>
+                    ${!item.isCorrect ? `<p class="text-xs text-slate-500 mt-0.5">Correct Answer: <strong>${item.correct}</strong></p>` : ''}
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        async function sendEmailResults() {
+    const emailInput = document.getElementById('user-email').value;
+    if (!emailInput || !emailInput.includes('@')) {
+        alert("Please enter a valid email address.");
+        return;
+    }
+
+    const emailBtn = document.getElementById('email-btn');
+    emailBtn.innerText = "Sending...";
+    emailBtn.disabled = true;
+
+    const payload = {
+        email: emailInput,
+        score: userScore.toFixed(2),
+        results: sessionAnswers
+    };
+
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        alert("Results shared successfully to your inbox!");
+        emailBtn.innerText = "Sent!";
+    } catch (error) {
+        alert("Could not process automatic mailing. Trying standard browser backup...");
+        // Fallback option in case of network timeout
+        window.open(`mailto:${emailInput}?subject=Test%20Results&body=Score:%20${userScore.toFixed(2)}`, '_blank');
+        emailBtn.innerText = "Share via Email";
+        emailBtn.disabled = false;
+    }
+}
+    </script>
+</body>
+</html>
