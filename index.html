@@ -169,49 +169,32 @@ document
 document
 .getElementById("email-btn")
 .addEventListener("click", sendEmailResults);
-async function loadSheetOptions() {
+  
+let selectedGid = "";  // add this at the top with your other let variables
 
+function loadSheetOptions() {
   startScreen.classList.add("hidden");
-
-  const testScreen =
-  document.getElementById("test-select-screen");
-
+  const testScreen = document.getElementById("test-select-screen");
   testScreen.classList.remove("hidden");
-
-  const container =
-  document.getElementById("test-list");
-
+  const container = document.getElementById("test-list");
   container.innerHTML = "";
 
-  // Add your sheet names here
-  // EXACTLY same as spreadsheet tab names
-
   const sheets = [
-    "Budget",
-    "Economic Survey",
+    { name: "Budget",          gid: "0"         },
+    { name: "Economic Survey", gid: "1708580473" },
   ];
 
   sheets.forEach(sheet => {
-
-    const btn =
-    document.createElement("button");
-
-    btn.className =
-    "w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold";
-
-    btn.innerText = sheet;
-
+    const btn = document.createElement("button");
+    btn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold";
+    btn.innerText = sheet.name;
     btn.onclick = () => {
-
-      selectedSheet = sheet;
-
+      selectedSheet = sheet.name;
+      selectedGid = sheet.gid;      // store gid
       startTest();
     };
-
     container.appendChild(btn);
-
   });
-
 }
   
 async function startTest() {
@@ -225,8 +208,8 @@ async function startTest() {
   try {
     document.getElementById("test-select-screen").classList.add("hidden");
 
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(selectedSheet.trim())}`;
-
+   const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${selectedGid}`;
+    
     console.log("Fetching URL:", csvUrl); // ADD THIS too
     
     const response = await fetch(csvUrl);
