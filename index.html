@@ -219,18 +219,19 @@ async function startTest() {
   startScreen.classList.add("hidden");
   loadingScreen.classList.remove("hidden");
 
-  try {
+  // ADD THIS — confirm what sheet is being loaded
+  console.log("Loading sheet:", selectedSheet);
 
-    document
-    .getElementById("test-select-screen")
-    .classList.add("hidden");
+  try {
+    document.getElementById("test-select-screen").classList.add("hidden");
+
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(selectedSheet.trim())}`;
+
+    console.log("Fetching URL:", csvUrl); // ADD THIS too
     
-    const csvUrl =
-`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(selectedSheet)}`;
-    
-    const response =
-    await fetch(csvUrl);
+    const response = await fetch(csvUrl);
     const csvText = await response.text();
+    // ... rest of your code
 
     Papa.parse(csvText, {
 
